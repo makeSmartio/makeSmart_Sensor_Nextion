@@ -24,75 +24,50 @@ void loop() {
   //r1.getValue(&dualState);
   if (digitalRead(relay1Pin)==true)
   {
-    if (dualState == true)
-    {
-      r1.setValue(false);
-    }
+    r1.setValue(false);
     relay1State=true;
   }
   else
   {
-    if (dualState == false)
-    {
-      r1.setValue(true);
-    }
+    r1.setValue(true);
     relay1State=false;
   }
 
   //r2.getValue(&dualState);
   if (digitalRead(relay2Pin)==true)
   {
-    if (dualState == true)
-    {
-      r2.setValue(false);
-    }
+    r2.setValue(false);
     relay2State=true;
   }
   else
   {
-    if (dualState == false)
-    {
-      r2.setValue(true);
-    }
+    r2.setValue(true);
     relay2State=false;
   }
 
   //r3.getValue(&dualState);
   if (digitalRead(relay3Pin)==true)
   {
-    if (dualState == true)
-    {
-      r3.setValue(false);
-    }
+    r3.setValue(false);
     relay3State=true;
   }
   else
   {
-    if (dualState == false)
-    {
-      r3.setValue(true);
-    }
+    r3.setValue(true);
     relay3State=false;
   }
 
   //r4.getValue(&dualState);
   if (digitalRead(relay4Pin)==true)
   {
-    if (dualState == true)
-    {
-      r4.setValue(false);
-    }
+    r4.setValue(false);
     relay4State=true;
   }
   else
   {
-    if (dualState == false)
-    {
-      r4.setValue(true);
-    }
+    r4.setValue(true);
     relay4State=false;
   }
-  nexLoop(nex_listen_list);
   
   Serial.print(SensorName);
 

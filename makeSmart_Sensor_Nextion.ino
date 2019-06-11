@@ -2,7 +2,7 @@ int ThisRockVersion = 89;
 String AlphaOrBeta = "Alpha";
 int NotifyEverySeconds = 0;
 int pirCount = 0;
-const int myInterval = 300;
+const int myInterval = 0;
 const char* host = "makeSmart.io";
 const int httpPort = 80;
 String SensorName;

@@ -1,6 +1,6 @@
 void setup() {
   Serial.begin(115200);
-  //Serial.setDebugOutput(true);
+  Serial.setDebugOutput(false);
   Wire.begin();
   
   String resetReason;
