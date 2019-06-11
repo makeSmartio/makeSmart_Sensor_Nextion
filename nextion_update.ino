@@ -14,14 +14,20 @@
   ESP32 uses Hardware serial RX:16, TX:17
   Serial pins are defined in the ESPNexUpload.cpp file
 */
-
+#include <ESPNexUpload.h>
 const char* fileName       = "/makeSmart.tft";
 bool updated          = false;
-
+int numberOfNextionUpdateTries = 0;
 
 
 void nextionUpdate(){
-
+  
+  numberOfNextionUpdateTries++;
+  if (numberOfNextionUpdateTries > 3)
+  {
+    return; //update not working
+  }
+  
   if(!updated){
     Serial.print("connecting to ");
     Serial.println(host);

@@ -93,16 +93,21 @@ void setup() {
 
     //Nextion
     nexInit();
-    dbSerial.begin(115200);
+    //dbSerial.begin(115200);
     //nexSerial.begin(115200);
     
     /* Register the pop event callback function of the current text component. */
 
-    r1.attachPop(r1PopCallback);
-    r2.attachPop(r2PopCallback);
-    r3.attachPop(r3PopCallback);
-    r4.attachPop(r4PopCallback);
+    r1.attachPop(r1PopCallback, &r1);
+    r2.attachPop(r2PopCallback, &r2);
+    r3.attachPop(r3PopCallback, &r3);
+    r4.attachPop(r4PopCallback, &r4);
 
+    //t0.setText("asdf");
+    
+    //t0.getText(buffer, sizeof(buffer));
+    //Serial.print(buffer);
+    
     pinMode(14, OUTPUT);
     pinMode(27, OUTPUT);
     pinMode(26, OUTPUT);
@@ -130,6 +135,9 @@ void setup() {
   
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
+    WiFi.mode(WIFI_STA);
+  WiFi.begin("GoodNet", "asdfasdf");
+
   WiFiManager wifiManager;
   wifiManager.setDebugOutput(true); 
   Serial.println(WiFi.SSID());

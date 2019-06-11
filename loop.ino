@@ -4,47 +4,96 @@ void loop() {
   httpServer.handleClient();
   
   //Nextion
-  nextionUpdate();
+  //nextionUpdate();
   nexLoop(nex_listen_list);
 
-  if (digitalRead(relay1Pin)==1)
+  int n = String(Dht22Temp).length(); 
+  
+    // declaring character array 
+    char char_array[n + 1]; 
+  
+    // copying the contents of the 
+    // string to char array 
+    strcpy(char_array, String(Dht22Temp).c_str()); 
+  
+        
+  //t0.setText(char_array);
+  
+  uint32_t dualState;
+  
+  //r1.getValue(&dualState);
+  if (digitalRead(relay1Pin)==true)
   {
+    if (dualState == true)
+    {
+      r1.setValue(false);
+    }
     relay1State=true;
   }
   else
   {
+    if (dualState == false)
+    {
+      r1.setValue(true);
+    }
     relay1State=false;
   }
 
-  if (digitalRead(relay2Pin)==1)
+  //r2.getValue(&dualState);
+  if (digitalRead(relay2Pin)==true)
   {
+    if (dualState == true)
+    {
+      r2.setValue(false);
+    }
     relay2State=true;
   }
   else
   {
+    if (dualState == false)
+    {
+      r2.setValue(true);
+    }
     relay2State=false;
   }
 
-  if (digitalRead(relay3Pin)==1)
+  //r3.getValue(&dualState);
+  if (digitalRead(relay3Pin)==true)
   {
+    if (dualState == true)
+    {
+      r3.setValue(false);
+    }
     relay3State=true;
   }
   else
   {
+    if (dualState == false)
+    {
+      r3.setValue(true);
+    }
     relay3State=false;
   }
 
-  if (digitalRead(relay4Pin)==1)
+  //r4.getValue(&dualState);
+  if (digitalRead(relay4Pin)==true)
   {
+    if (dualState == true)
+    {
+      r4.setValue(false);
+    }
     relay4State=true;
-    //r4.setValue(0);
   }
   else
   {
+    if (dualState == false)
+    {
+      r4.setValue(true);
+    }
     relay4State=false;
-    //r4.setValue(1);
   }
-  Serial.print(relay1State);
+  nexLoop(nex_listen_list);
+  
   Serial.print(SensorName);
 
   rssi = WiFi.RSSI();
