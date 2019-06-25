@@ -1,12 +1,7 @@
-void handleWebsite() {
-  buildWebsite();
-  httpServer.send(200, "text/html", webSite);
-}
+//void notFound(AsyncWebServerRequest *request) {
+//    request->send(404, "text/plain", "Not found");
+//}
 
-void handleXML() {
-  buildXML();
-  httpServer.send(200, "text/xml", XML);
-}
 void buildWebsite() {
 
   buildJavascript();
@@ -31,16 +26,20 @@ void buildWebsite() {
   webSite += javaScript;
   webSite += "<body onload='process()'>\n";
   webSite += "<h1>" + SensorName + "</h1> <h3>"+ipAddr+" on "+WiFi.SSID()+" RSSI: <a id='rssi'></a></h3>";
-  webSite += "<p><a href=\"ledOn\"><button class='button'>Led On</button></a> <a href=\"ledOff\"> <button class='button'>Led Off</button></a>";
+  webSite += "<p><button class='button' onclick=getURL(this) id=ledOn>Led On</button>";
+  webSite += " <button class='button'onclick=getURL(this) id=ledOn>Led Off</button>";
   webSite += " <a href=\"sendAlert\"><button class='button'>Send Alert Test</button></a>";
   webSite += " <a href=\"update\"><button class='button'>Update Firmware</button></a>";
+  webSite += " <a href=\"updateNextion\"><button class='button'>Update Nextion</button></a>";
   webSite += " <a href=\"resetWifi\"><button class='button'>Erase WIFI settings and reboot</button></a>";
   webSite += " <a href=\"reboot\"><button class='button'>Reboot</button></a></p>";
+  
   webSite += " <p><button onclick=relayBtn(this) class='button' id=relay1>Relay1</button>";
-  webSite += " <a href=\"relay2\"><button class='button' id=relay2>Relay2</button></a>";
-  webSite += " <a href=\"relay3\"><button class='button' id=relay3>Relay3</button></a>";
-  webSite += " <a href=\"relay4\"><button class='button' id=relay4>Relay4</button></a></p>";
-  webSite += "Runtime = <a id='upTime'></a>\n";
+  webSite += " <button onclick=relayBtn(this) class='button' id=relay2>Relay2</button>";
+  webSite += " <button onclick=relayBtn(this) class='button' id=relay3>Relay3</button>";
+  webSite += " <button onclick=relayBtn(this) class='button' id=relay4>Relay4</button>";
+
+  webSite += "<p>Runtime = <a id='upTime'></a>\n";
   webSite += "Accel1 = <a id='accel1'></a>\n";
   webSite += "Gyro1 = <a id='gyro1'></a>\n";
   webSite += "A0 = <a id='A0'></a>\n";
@@ -85,6 +84,14 @@ void buildJavascript() {
   javaScript = "<script src=https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js></script>\n";
   javaScript += "<SCRIPT>\n";
   
+
+  javaScript += "   function getURL(element) {\n";
+  javaScript += "        $.ajax({\n";
+  javaScript += "          url: '/'+element.id,\n";
+  javaScript += "          type: 'POST',\n";
+  javaScript += "        success:function(results) {$('#Status').html(results);}\n";
+  javaScript += "      });\n";
+  javaScript += "  };\n";
 
   javaScript += "   function relayBtn(element) {\n";
   javaScript += "        $.ajax({\n";

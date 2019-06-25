@@ -1,6 +1,6 @@
 void setup() {
   Serial.begin(115200);
-  Serial.setDebugOutput(false);
+  //Serial.setDebugOutput(true);
   Wire.begin();
   
   String resetReason;
@@ -135,11 +135,15 @@ void setup() {
   
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
-    WiFi.mode(WIFI_STA);
-  WiFi.begin("GoodNet", "asdfasdf");
+  //WiFi.mode(WIFI_STA);
+  //WiFi.begin("GoodNet", "asdfasdf");
 
-  WiFiManager wifiManager;
-  wifiManager.setDebugOutput(true); 
+  //WiFiManager wifiManager;
+  //wifiManager.setDebugOutput(true); 
+  
+  DNSServer dns;
+  AsyncWiFiManager wifiManager(&httpServer,&dns);
+  
   Serial.println(WiFi.SSID());
   Serial.println(WiFi.psk());
   
@@ -164,7 +168,6 @@ void setup() {
     ESP.restart();
   }
 
-
   mac_addr = WiFi.macAddress();
   Serial.println(mac_addr);
 
@@ -174,17 +177,19 @@ void setup() {
 
   String chipString = "makeSmart-" + chipId;
   const char* chipChar = chipString.c_str();
-  WiFiManagerParameter custom_text(chipChar);
+  AsyncWiFiManagerParameter custom_text(chipChar);
   wifiManager.addParameter(&custom_text);
+
+  //WiFiManagerParameter custom_text(chipChar);
+  //wifiManager.addParameter(&custom_text);
     
-  apName = "makeSmart";//-" + chipId; //mac_addr;
+  apName = "makeSmart";
   apName.toCharArray(apNameCharBuf, 100);
 
   display.print("Connect your wifi to:\n" + String(apNameCharBuf));
   display.display();
 
   wifiManager.setAPStaticIPConfig(IPAddress(10, 10, 10, 10), IPAddress(), IPAddress(255, 255, 255, 0));
-  ////wifiManager.setSTAStaticIPConfig(IPAddress(10,10,10,10), IPAddress(), IPAddress(255,255,255,0));
 
   wifiManager.autoConnect(apNameCharBuf, apPassword);
   //wifiManager.autoConnect();
@@ -206,6 +211,8 @@ void setup() {
 
   pinMode(A0, INPUT); //water sensor
   //pinMode(A1, INPUT); //Analog Reading - ESP32 - VN pin
+
+  ADC0readVoltage();
 
   DS18B20_Sensor.begin();
   getDS18B20Temp();
@@ -244,6 +251,9 @@ void setup() {
   Serial.println("Testing device connections...");
   Serial.println(accelgyroIC1.testConnection() ? "MPU6050-1 connection successful" : "MPU6050-1 connection failed");
 
+  ads.setGain(GAIN_TWOTHIRDS);  // 2/3x gain +/- 6.144V  1 bit = 3mV      0.1875mV (default)
+  ads.begin();
+
   GetParamsFromWeb();
   const char* dnsName = SensorName.c_str();
   if (!MDNS.begin((dnsName))) {
@@ -259,108 +269,159 @@ void setup() {
   Serial.println( WiFi.SSID() );
   Serial.println( WiFi.psk() );
   rssi = WiFi.RSSI();
-
-  if (chipId == "1495298")
-  {
-    yamahaTurnOn();
-  }
   
   analogVal = analogRead(A0);
+  
   sendData("Startup", resetReason);
 
 
-  //const char* updatePage = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
-  httpServer.on("/update", HTTP_GET, [](){
-    httpServer.sendHeader("Connection", "close");
-    httpServer.send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>");
-  });
-  httpServer.on("/update", HTTP_POST, [](){
-    httpServer.sendHeader("Connection", "close");
-    httpServer.send(200, "text/plain", (Update.hasError())?"FAIL":"OK");
-    ESP.restart();
-  },[](){
-    HTTPUpload& upload = httpServer.upload();
-    if(upload.status == UPLOAD_FILE_START){
-      Serial.setDebugOutput(true);
-      //WiFiUDP::stopAll();
-      Serial.printf("Update: %s\n", upload.filename.c_str());
-      uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
-      if(!Update.begin(maxSketchSpace)){//start with max available size
-        Update.printError(Serial);
+  // Simple Firmware Update Form
+  
+    httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>");
+    });
+    httpServer.on("/update", HTTP_POST, [](AsyncWebServerRequest *request){
+      shouldReboot = !Update.hasError();
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot?"OK":"FAIL");
+      response->addHeader("Connection", "close");
+      request->send(response);
+    },[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
+      if(!index){
+        Serial.printf("Update Start: %s\n", filename.c_str());
+        if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
+          Update.printError(Serial);
+        }
       }
-    } else if(upload.status == UPLOAD_FILE_WRITE){
-      if(Update.write(upload.buf, upload.currentSize) != upload.currentSize){
-        Update.printError(Serial);
+      if(!Update.hasError()){
+        if(Update.write(data, len) != len){
+          Update.printError(Serial);
+        }
       }
-    } else if(upload.status == UPLOAD_FILE_END){
-      if(Update.end(true)){ //true to set the size to the current progress
-        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-      } else {
-        Update.printError(Serial);
+      if(final){
+        if(Update.end(true)){
+          Serial.printf("Update Success: %uB\n", index+len);
+        } else {
+          Update.printError(Serial);
+        }
       }
-      Serial.setDebugOutput(false);
-    }
-    yield();
-  });
+    });
 
-  httpServer.on("/", handleWebsite);
-  httpServer.on("/xml", handleXML);
-  httpServer.on("/ledOn", []() {
-    httpServer.send(200, "text/html", "Led On. <a href=javascript:history.go(-1)>Back</a> <a href=ledOff>Led Off</a>");
+    httpServer.on("/updateNextion", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send(200, "text/html", "Pull makeSmart.tft from http://makeSmart.io? <a href=yesUpdateNextion>Yes</a> <a href=javascript:history.go(-1)>No</a>");
+    });
+    httpServer.on("/yesUpdateNextion", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send(200, "text/html", "Updating. Please try again if it fails. ");
+      doUpdateNextion=true;
+    });
+    httpServer.on("/updateNextionUpload", HTTP_POST, [](AsyncWebServerRequest *request){
+      shouldReboot = !Update.hasError();
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", doUpdateNextion?"OK":"FAIL");
+      response->addHeader("Connection", "close");
+      request->send(response);
+    },[](AsyncWebServerRequest *request, String filename, size_t index, const uint8_t *data, size_t len, bool final){
+    if(!index){
+        Serial.printf("UploadStart: %s\n", filename.c_str());
+      }
+      uint8_t file;
+      for(size_t i=0; i<len; i++){
+        //Serial.write(data[i]);
+        file =+ data[i];
+      }
+  
+  if(final){
+      Serial.printf("UploadEnd: %s, %u B\n", filename.c_str(), index+len);
+      ESPNexUpload nextion(115200);
+
+     bool result; 
+     result = nextion.prepareUpload(index+len); //1509017
+    
+    if(result){
+      Serial.print(F("Start upload. File size is: "));
+      Serial.print(index+len);
+      Serial.println(F(" bytes"));
+    }
+    else
+    {
+      Serial.println(nextion.statusMessage + "\n");
+      return false;
+    }
+    
+    // Write the received bytes to the nextion
+    result = nextion.upload(data, 1509017);
+    
+    if(result){
+      Serial.print(F("."));
+    }else{
+      Serial.println(nextion.statusMessage + "\n");
+      return false;
+    }
+
+      }      
+    });
+  
+    
+  httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        buildWebsite();
+        Serial.println("buildWebsite");
+        request->send(200, "text/html", webSite);
+    });
+  httpServer.on("/xml", HTTP_PUT, [](AsyncWebServerRequest *request){
+        buildXML();
+        //Serial.println("XML");
+        request->send(200, "text/xml", XML);
+    });
+  httpServer.on("/ledOn", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Led On. <a href=javascript:history.go(-1)>Back</a> <a href=ledOff>Led Off</a>");
     digitalWrite(ledPin, HIGH); 
   });
-  httpServer.on("/ledOff", []() {
-    httpServer.send(200, "text/html", "Led Off. <a href=javascript:history.go(-1)>Back</a> <a href=ledOn>Led On</a>");
+  httpServer.on("/ledOff", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Led Off. <a href=javascript:history.go(-1)>Back</a> <a href=ledOn>Led On</a>");
     digitalWrite(ledPin, LOW);
   });
-  httpServer.on("/reboot", []() {
-    httpServer.send(200, "text/html", "Reboot? <a href=yesReboot>Yes</a> <a href=javascript:history.go(-1)>No</a>");
+  httpServer.on("/reboot", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Reboot? <a href=yesReboot>Yes</a> <a href=javascript:history.go(-1)>No</a>");
   });
-  httpServer.on("/yesReboot", []() {
-    httpServer.send(200, "text/html", "<a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/yesReboot", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "<a href=javascript:history.go(-1)>Back</a>");
     writeEEPROM(10, "Web reboot button");
     ESP.restart();
     //delay(1000);
   });
-  httpServer.on("/sendAlert", []() {
-    httpServer.send(200, "text/html", "Alert sending. <a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/sendAlert", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Alert sending. <a href=javascript:history.go(-1)>Back</a>");
     sendData("Web button pushed", "true");
     //delay(1000);
   });
 
-  httpServer.on("/resetWifi", []() {
-    httpServer.send(200, "text/html", "Erase wifi config? <a href=yesResetWifi>Yes</a> <a href=javascript:history.go(-1)>No</a>");
+  httpServer.on("/resetWifi", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Erase wifi config? <a href=yesResetWifi>Yes</a> <a href=javascript:history.go(-1)>No</a>");
   });
-  httpServer.on("/yesResetWifi", []() {
-    httpServer.send(200, "text/html", "Erasing wifi. <a href=/</a>");
+  httpServer.on("/yesResetWifi", [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", "Erasing wifi. <a href=/</a>");
     writeEEPROM(10, "Web resetWifi button");
     resetWifi();
     ESP.restart();
   });
 
-  httpServer.on("/relay1", []() {
-    httpServer.send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/relay1", [](AsyncWebServerRequest *request) {
     relayToggle(14);
+    request->send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
   });
-  httpServer.on("/relay2", []() {
-    httpServer.send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/relay2", [](AsyncWebServerRequest *request) {
     relayToggle(27);
+    request->send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
   });
-  httpServer.on("/relay3", []() {
-    httpServer.send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/relay3", [](AsyncWebServerRequest *request) {
     relayToggle(26);
+    request->send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
   });
-  httpServer.on("/relay4", []() {
-    httpServer.send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
+  httpServer.on("/relay4", [](AsyncWebServerRequest *request) {
     relayToggle(25);
+    request->send(200, "text/html", "Toggled. <a href=javascript:history.go(-1)>Back</a>");
   });
-
-  httpServer.on("/relayOneToggle", []() {
-    httpServer.send(200, "text/html", "Toggled");
-    relayToggle(1);
-  });
+  
   client.print("HTTP/1.1 301 Moved Permanently\r\nLocation: http://makeSmart.io/favicon.ico\r\n\r\n");
-
+  
   httpServer.begin();
   Serial.printf("HTTP Server ready! Open http://%s.local/ in your browser\n", SensorName.c_str());
 

@@ -1,4 +1,35 @@
+void ADC0readVoltage()
+{
+  int16_t rawADC0value;  // The is where we store the value we receive from the ADS1115
+  float volts; // The result of applying the scale factor to the raw value
+  float vout = 0.0;
+  int sum = 0;                    // sum of samples taken
+  unsigned char sample_count = 0; // current sample number
 
+ while (sample_count < NUM_SAMPLES) {
+      sum += (ads.readADC_SingleEnded(0) * scalefactor);
+      sample_count++;
+      delay(10);
+  }
+  
+  vout = ((float)sum / (float)NUM_SAMPLES)/1000;
+  sample_count = 0;
+  sum = 0;
+
+  voltage = vout / (R2/(R1+R2)); 
+
+  rawADC0value = ads.readADC_SingleEnded(1); 
+  volts = (rawADC0value * scalefactor)/1000.0;
+
+  Serial.print("\tRaw ADC0 Value = "); 
+  Serial.print(rawADC0value); 
+  Serial.print("\tVoltage Measured = ");
+  Serial.print(volts,2);
+
+  Serial.print("  V= ");
+  Serial.println(voltage);
+  display.print("Voltage Sensor: "); display.println(voltage);
+}
 void r1PopCallback(void *ptr)
 {
     dbSerialPrintln("r1PopCallback");
@@ -63,14 +94,20 @@ String readEEPROM(char add)
 }
 
 void resetWifi() {
-  WiFiManager wifiManager;
-  wifiManager.resetSettings();
+  //WiFiManager wifiManager;
+  //DNSServer dns;
+  //AsyncWiFiManager wifiManager(&httpServer,&dns);
+  //wifiManager.resetSettings();
+  //WiFi.disconnect(false,true);
   Serial.println("Reset Wifi done.");
-  //esp_wifi_restore();
   
-  WiFi.disconnect(true);   // still not erasing the ssid/pw. Will happily reconnect on next start
+  //WiFi.disconnect(true);   // still not erasing the ssid/pw. Will happily reconnect on next start
   WiFi.begin("0","0");
-  //WiFi.disconnect(true,true);
+  #if defined(ESP8266)
+    WiFi.disconnect(true);
+  #else
+    WiFi.disconnect(true,true);
+  #endif
   delay(2000);
   
 }
@@ -253,7 +290,7 @@ int sendData(String alertType, String message)
 
   String data;
   data = "RockID=" + String(chipId) + "&DhtTemp=" + String(Dht22Temp) + "&DhtHumi=" + String(Dht22Humi) ;
-  data += "&Voltage=" + String(vdd) + "&WaterPresent=" + String(analogVal) + "&temp1=" + String(Probe1) + "&temp2=" ;
+  data += "&Voltage=" + String(voltage) + "&WaterPresent=" + String(analogVal) + "&temp1=" + String(Probe1) + "&temp2=" ;
   data += String(Probe2) + "&accel1=" + String(accel1) + "&AccelTemp=" + String(AccelTemp);
   data += "&gyro1=" + String(gyro1) + "&accel2=" + String(accelArrayAvg) + "&gyro2=" + String(gyroArrayAvg) + "&DateTime=TIMESTAMP";
   data += "&SendAlert=" + sendAlert + "&AlertType=" + String(alertType) + "&SensorName=" + SensorName;
@@ -371,7 +408,6 @@ void GetParamsFromWeb()
   streamData = streamData.substring(descLocation);
 
   StaticJsonDocument<800> doc;
-
   DeserializationError error = deserializeJson(doc, streamData);
   // Test if parsing succeeds.
   if (error) {
@@ -395,28 +431,36 @@ void GetParamsFromWeb()
   Serial.print("AlphaOrBeta: "); Serial.println(AlphaOrBeta);
 
   const char* warnAboveDHTTempCast = doc["warnAboveDHTTemp"];
-  warnAboveDHTTemp = String(warnAboveDHTTempCast).toFloat();
+  warnAboveDHTTemp = String(warnAboveDHTTempCast).toInt();
   Serial.print("warnAboveDHTTemp: "); Serial.print(warnAboveDHTTemp);
 
   const char* warnBelowDHTTempCast = doc["warnBelowDHTTemp"];
-  warnBelowDHTTemp = String(warnBelowDHTTempCast).toFloat();
+  warnBelowDHTTemp = String(warnBelowDHTTempCast).toInt();
   Serial.print("\twarnBelowDHTTemp: "); Serial.println(warnBelowDHTTemp);
 
   const char* warnAboveProbe1Cast = doc["warnAboveTemp1"];
-  warnAboveProbe1 = String(warnAboveProbe1Cast).toFloat();
+  warnAboveProbe1 = String(warnAboveProbe1Cast).toInt();
   Serial.print("warnAboveProbe1: "); Serial.print(warnAboveProbe1);
 
   const char* warnBelowProbe1Cast = doc["warnBelowTemp1"];
-  warnBelowProbe1 = String(warnBelowProbe1Cast).toFloat();
+  warnBelowProbe1 = String(warnBelowProbe1Cast).toInt();
   Serial.print("\t warnBelowProbe1: "); Serial.println(warnBelowProbe1);
 
   const char* warnAboveTemp2Cast = doc["warnAboveTemp2"];
-  warnAboveTemp2 = String(warnAboveTemp2Cast).toFloat();
+  warnAboveTemp2 = String(warnAboveTemp2Cast).toInt();
   Serial.print("warnAboveTemp2: "); Serial.print(warnAboveTemp2);
 
   const char* warnBelowTemp2Cast = doc["warnBelowTemp2"];
-  warnBelowTemp2 = String(warnBelowTemp2Cast).toFloat();
+  warnBelowTemp2 = String(warnBelowTemp2Cast).toInt();
   Serial.print("\t warnBelowTemp2: "); Serial.println(warnBelowTemp2);
+
+  const char* relay1OnTempCast = doc["relay1OnTemp"];
+  relay1OnTemp = String(relay1OnTempCast).toInt();
+  Serial.print("\t relay1OnTemp: "); Serial.println(relay1OnTemp);
+
+  const char* relay1OffTempCast = doc["relay1OffTemp"];
+  relay1OffTemp = String(relay1OffTempCast).toInt();
+  Serial.print("\t relay1OffTemp: "); Serial.println(relay1OffTemp);
 
   const char* trackMotionCast = doc["trackMotion"];
   if (String(trackMotionCast)=="true" || String(trackMotionCast)=="1")
@@ -435,8 +479,10 @@ void GetParamsFromWeb()
   Serial.print("\t sendMotionAlerts: "); Serial.println(sendMotionAlerts);
 
   const char* sendFrequencyCast = doc["sendFrequency"];
-  sendFrequency = String(sendFrequencyCast).toFloat();
+  sendFrequency = String(sendFrequencyCast).toInt();
   Serial.print("\t sendFrequency: "); Serial.println(sendFrequency);
+  if (sendFrequency<10)
+    sendFrequency=300;
 
   SensorName = String(Desc);
 
@@ -591,36 +637,4 @@ void BME280Data()
     Dht22Temp = bmeTemp;
     Dht22Humi = bmeHumi;
   }
-}
-void yamahaTurnOn()
-{
-
-  if (WiFi.status() == WL_CONNECTED) { //Check WiFi connection status
-
-    HTTPClient http;  //Declare an object of class HTTPClient
-
-    http.begin("http://10.0.0.127/YamahaExtendedControl/v1/main/setPower?power=on");  //Specify request destination
-    int httpCode = http.GET();                                                                  //Send the request
-
-    if (httpCode > 0) { //Check the returning code
-
-      String payload = http.getString();   //Get the request response payload
-      Serial.println(payload);                     //Print the response payload
-
-    }
-
-    http.begin("http://10.0.0.127/YamahaExtendedControl/v1/main/setInput?input=tv&mode=autoplay_disabled");  //Specify request destination
-    httpCode = http.GET();                                                                  //Send the request
-
-    if (httpCode > 0) { //Check the returning code
-
-      String payload = http.getString();   //Get the request response payload
-      Serial.println(payload);                     //Print the response payload
-
-    }
-
-    http.end();   //Close connection
-
-  }
-
 }

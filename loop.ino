@@ -1,73 +1,11 @@
 void loop() {
 
-  //Serial.println(String(WiFi.BSSIDstr()));
-  httpServer.handleClient();
-  
-  //Nextion
-  //nextionUpdate();
-  nexLoop(nex_listen_list);
-
-  int n = String(Dht22Temp).length(); 
-  
-    // declaring character array 
-    char char_array[n + 1]; 
-  
-    // copying the contents of the 
-    // string to char array 
-    strcpy(char_array, String(Dht22Temp).c_str()); 
-  
-        
-  //t0.setText(char_array);
-  
-  uint32_t dualState;
-  
-  //r1.getValue(&dualState);
-  if (digitalRead(relay1Pin)==true)
-  {
-    r1.setValue(false);
-    relay1State=true;
-  }
-  else
-  {
-    r1.setValue(true);
-    relay1State=false;
+  if(shouldReboot){
+    Serial.println("Rebooting...");
+    delay(100);
+    ESP.restart();
   }
 
-  //r2.getValue(&dualState);
-  if (digitalRead(relay2Pin)==true)
-  {
-    r2.setValue(false);
-    relay2State=true;
-  }
-  else
-  {
-    r2.setValue(true);
-    relay2State=false;
-  }
-
-  //r3.getValue(&dualState);
-  if (digitalRead(relay3Pin)==true)
-  {
-    r3.setValue(false);
-    relay3State=true;
-  }
-  else
-  {
-    r3.setValue(true);
-    relay3State=false;
-  }
-
-  //r4.getValue(&dualState);
-  if (digitalRead(relay4Pin)==true)
-  {
-    r4.setValue(false);
-    relay4State=true;
-  }
-  else
-  {
-    r4.setValue(true);
-    relay4State=false;
-  }
   
   Serial.print(SensorName);
 
@@ -87,8 +25,8 @@ void loop() {
   else
     display.println("makeSmart(" + SensorName.substring(0, 10) + ")");
 
-  if (Probe2 == -196.00)
-    display.println(sensorMode + " ver:1." + ThisRockVersion);
+  //if (Probe2 == -196.00)
+  //  display.println(sensorMode + " ver:1." + ThisRockVersion);
 
 
   int d5 = digitalRead(D5); 
@@ -107,6 +45,10 @@ void loop() {
     }
   }
 
+  ADC0readVoltage();
+
+  //Serial.print("\t");
+ 
   if (sensorMode == "Soil")
   {
     analogVal = analogRead(A0);
@@ -269,6 +211,79 @@ void loop() {
     sendData("Timer", String(keepDataPoint));
   }
 
+  //Nextion
+  if (doUpdateNextion == true)
+    nextionUpdate();
+
+  nexLoop(nex_listen_list);
+
+  int n = String(Probe1).length(); 
+  char char_array[n + 1]; 
+  strcpy(char_array, String(Probe1).c_str());       
+  t0.setText(char_array);
+
+  n = String(ipAddr).length(); 
+  char_array[n + 1]; 
+  strcpy(char_array, String(ipAddr).c_str());       
+  t2.setText(char_array);
+
+  n = String(voltage).length(); 
+  char_array[n + 1]; 
+  strcpy(char_array, String(voltage).c_str());       
+  t4.setText(char_array);
+
+  if (Probe1 > relay1OnTemp)
+    digitalWrite(relay1Pin, LOW);
+
+  if (Probe1 < relay1OffTemp)
+    digitalWrite(relay1Pin, HIGH);
+    
+  if (digitalRead(relay1Pin)==true)
+  {
+    r1.setValue(false);
+    relay1State=true;
+    Serial.println("Relay1 Off");
+  }
+  else
+  {
+    r1.setValue(true);
+    relay1State=false;
+    Serial.println("Relay1 OnÂ");
+  }
+
+  if (digitalRead(relay2Pin)==true)
+  {
+    r2.setValue(false);
+    relay2State=true;
+  }
+  else
+  {
+    r2.setValue(true);
+    relay2State=false;
+  }
+
+  if (digitalRead(relay3Pin)==true)
+  {
+    r3.setValue(false);
+    relay3State=true;
+  }
+  else
+  {
+    r3.setValue(true);
+    relay3State=false;
+  }
+
+  if (digitalRead(relay4Pin)==true)
+  {
+    r4.setValue(false);
+    relay4State=true;
+  }
+  else
+  {
+    r4.setValue(true);
+    relay4State=false;
+  }
+
   display.display();
 
   Serial.print("\t Last Send: ");
@@ -276,5 +291,5 @@ void loop() {
   Serial.print("\t Last Alert: ");
   Serial.println(secsSinceLastAlert);
 
-  delay(myInterval);
+  delay(loopDelay);
 }

@@ -1,13 +1,19 @@
-int ThisRockVersion = 89;
+int ThisRockVersion = 90;
 String AlphaOrBeta = "Alpha";
+bool shouldReboot = false;
+bool doUpdateNextion = false;
+
 int NotifyEverySeconds = 0;
 int pirCount = 0;
-const int myInterval = 0;
+const int loopDelay = 0;
 const char* host = "makeSmart.io";
 const int httpPort = 80;
 String SensorName;
 String sensorMode = "Blank";
 String mac_addr;
+String apName;
+
+float voltage;
 
 int relay1Pin = 14;
 int relay2Pin = 27;
@@ -18,6 +24,9 @@ bool relay1State;
 bool relay2State;
 bool relay3State;
 bool relay4State;
+
+int relay1OffTemp = 75;
+int relay1OnTemp = 78;
 
 const char* apPassword = "asdfasdf";
 long rssi;
@@ -68,6 +77,10 @@ String webSite, javaScript, XML;
 
 #if defined(ESP8266)
   #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+
+  #include <ESPAsyncWebServer.h>
+  AsyncWebServer httpServer(80);
+
   #include <ESP8266WebServer.h>
   #include <ESP8266HTTPUpdateServer.h>
   ESP8266WebServer httpServer(80);
@@ -81,8 +94,10 @@ String webSite, javaScript, XML;
 
 #else
   #include <WiFi.h>          //https://github.com/esp8266/Arduino
-  #include <WebServer.h>
-  WebServer httpServer(80);
+  #include <Hash.h>
+  #include <AsyncTCP.h>
+  #include <ESPAsyncWebServer.h>
+  AsyncWebServer httpServer(80);
   #include <ESP32httpUpdate.h>
   #include <Update.h>
   #include <ESPmDNS.h>
@@ -114,7 +129,8 @@ DallasTemperature DS18B20_Sensor(&oneWire_in);
 
 #include <DNSServer.h>
 
-#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+//#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+#include <ESPAsyncWiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
 
 #include <WiFiClient.h>
@@ -130,9 +146,6 @@ String ipAddr;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
-//#include "I2Cdev.h"
-#include "MPU6050.h"
-
 bool metric = false;
 double tcTemp;
 
@@ -146,10 +159,8 @@ float Dht22Humi, Dht22Temp = -196;  // Values read from sensor
 float bmeTemp(NAN), bmeHumi(NAN), bmePres(NAN);
 float oldTemp;
 time_t oldTempTime = now();
-//ADC_MODE(ADC_VCC); //vcc read
-//#define ESP_INIT_DATA_ENABLE_READADC
 
-String apName;
+#include "MPU6050.h"
 MPU6050 accelgyroIC1(0x68);
 
 int i = 0;
@@ -172,6 +183,19 @@ bool bme280onBoard;
 String webPage;
 String line1;//, line2, line3, line4, line5;
 
+
+
+
+#include <Adafruit_ADS1015.h>
+Adafruit_ADS1115 ads;  // Declare an instance of the ADS1115
+
+float scalefactor = 0.1875F; // This is the scale factor for the default +/- 6.144 Volt Range we will use
+float R1 = 1000000.0; //30000  
+float R2 = 150000.0; //7500 
+//float vRef = 5;
+#define NUM_SAMPLES 50 // number of analog samples to take per reading
+
+
 //Nextion
 #include "Nextion.h"
 
@@ -180,22 +204,19 @@ void r1PopCallback(void *ptr);
 //Declare object [page id:0,component id:3, component name: "b1"]. 
 
 NexText t0 = NexText(0, 1, "t0");
+NexText t2 = NexText(0, 7, "t2");
+NexText t4 = NexText(0, 9, "t4");
 
-NexButton b0 = NexButton(0, 2, "b0");
-NexButton b1 = NexButton(0, 3, "b1");
-
-NexDSButton r1 = NexDSButton(0, 4, "r1");
-NexDSButton r2 = NexDSButton(0, 5, "r2");
-NexDSButton r3 = NexDSButton(0, 6, "r3");
-NexDSButton r4 = NexDSButton(0, 7, "r4");
+NexDSButton r1 = NexDSButton(0, 2, "r1");
+NexDSButton r2 = NexDSButton(0, 3, "r2");
+NexDSButton r3 = NexDSButton(0, 4, "r3");
+NexDSButton r4 = NexDSButton(0, 5, "r4");
 
 char buffer[100] = {0};
 
 NexTouch *nex_listen_list[] = 
 {
     &t0,
-    &b0,
-    &b1,
     &r1,
     &r2,
     &r3,
