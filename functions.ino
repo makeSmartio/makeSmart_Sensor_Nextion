@@ -4,21 +4,26 @@ void ADC0readVoltage()
   float volts; // The result of applying the scale factor to the raw value
   float vout = 0.0;
   int sum = 0;                    // sum of samples taken
-  unsigned char sample_count = 0; // current sample number
+  int sample_count = 0; // current sample number
+  int NUM_SAMPLES = 50; // number of analog samples to take per reading
+  
+  float scalefactor = 0.1875F; // This is the scale factor for the default +/- 6.144 Volt Range we will use
+  float R1 = 1000000.0; //30000  
+  float R2 = 150000.0; //7500 
 
+
+ rawADC0value = ads.readADC_SingleEnded(0); 
  while (sample_count < NUM_SAMPLES) {
       sum += (ads.readADC_SingleEnded(0) * scalefactor);
       sample_count++;
       delay(10);
   }
-  
   vout = ((float)sum / (float)NUM_SAMPLES)/1000;
   sample_count = 0;
   sum = 0;
 
   voltage = vout / (R2/(R1+R2)); 
 
-  rawADC0value = ads.readADC_SingleEnded(1); 
   volts = (rawADC0value * scalefactor)/1000.0;
 
   Serial.print("\tRaw ADC0 Value = "); 
@@ -29,6 +34,57 @@ void ADC0readVoltage()
   Serial.print("  V= ");
   Serial.println(voltage);
   display.print("Voltage Sensor: "); display.println(voltage);
+}
+void checkSoil()
+{
+  {
+    //delay(1000);
+    int sum = 0;                    // sum of samples taken
+    int sample_count = 0; // current sample number
+    int NUM_SAMPLES = 1; // number of analog samples to take per reading
+
+     analogVal = ads.readADC_SingleEnded(1); 
+     while (sample_count < NUM_SAMPLES) {
+      sum += (ads.readADC_SingleEnded(1));// * scalefactor);
+      sample_count++;
+      delay(10);
+    }
+    analogVal = ((float)sum / (float)NUM_SAMPLES);
+    sample_count = 0;
+    sum = 0;
+    Serial.print("\t Soil value: ");
+    Serial.print(analogVal);
+    display.print("Soil Sensor: "); display.println(analogVal);
+    if (analogVal > drySoilValue)
+    {
+      Serial.print("Dry soil detected!!!");
+      if (now() - lastSoilAlert > NotifyEverySeconds)
+      {
+        Serial.println("Sending Dry Soil Alert");
+        sendData("DrySoil", String(analogVal));
+      }
+    }
+  }
+}
+void checkProbes()
+{
+  getDS18B20Temp();
+  if (Probe1 > warnAboveProbe1  && (now() - lastTooHotAlert > NotifyEverySeconds) && Probe1 != 185)
+  {
+    sendData("TooHot", "Probe1: " + String(Probe1));
+  }
+  if (Probe1 < warnBelowProbe1 && Probe1 != -196.00  && (now() - lastTooColdAlert > NotifyEverySeconds))
+  {
+    sendData("TooCold", "Probe1: " + String(Probe1));
+  }
+  if (Probe2 > warnAboveTemp2  && (now() - lastTooHotAlert > NotifyEverySeconds) && Probe2 != 185)
+  {
+    sendData("TooHot", "Probe2: " + String(Probe2));
+  }
+  if (Probe2 < warnBelowTemp2 && Probe2  != -196.00  && (now() - lastTooColdAlert > NotifyEverySeconds))
+  {
+    sendData("TooCold", "Probe2: " + String(Probe2));
+  }
 }
 void r1PopCallback(void *ptr)
 {

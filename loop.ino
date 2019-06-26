@@ -28,6 +28,19 @@ void loop() {
   //if (Probe2 == -196.00)
   //  display.println(sensorMode + " ver:1." + ThisRockVersion);
 
+  checkProbes();
+
+  if (Probe1 > -195)
+  {
+    display.print("Probe1: "); display.print(Probe1); display.println(" Deg");
+    Serial.print("\t Probe1: "); Serial.print(Probe1);
+  }
+
+  if (Probe2 > -195)
+  {
+    display.print("Probe2: "); display.print(Probe2); display.println(" Deg");
+    Serial.print("\t Probe2: "); Serial.print(Probe2);
+  }
 
   int d5 = digitalRead(D5); 
   Serial.print("\t D5: ");
@@ -45,25 +58,13 @@ void loop() {
     }
   }
 
-  ADC0readVoltage();
+  nexLoop(nex_listen_list);
 
-  //Serial.print("\t");
+  ADC0readVoltage();
+  //delay(500);
  
   if (sensorMode == "Soil")
-  {
-    analogVal = analogRead(A0);
-    Serial.print("\t Soil value: ");
-    Serial.print(analogVal);
-    display.print("Soil Sensor: "); display.println(analogVal);
-    if (analogVal > drySoilValue)
-    {
-      display.print("Dry soil detected!!!");
-      if (now() - lastSoilAlert > NotifyEverySeconds)
-      {
-        sendData("DrySoil", String(analogVal));
-      }
-    }
-  }
+    checkSoil();
   else if (sensorMode == "Air")
   {
     analogVal = analogRead(A0);
@@ -138,36 +139,6 @@ void loop() {
     display.print(Dht22Temp); display.print(" Deg "); display.print(Dht22Humi); display.println("%");
   }
 
-  getDS18B20Temp();
-  if (Probe1 > warnAboveProbe1  && (now() - lastTooHotAlert > NotifyEverySeconds) && Probe1 != 185)
-  {
-    sendData("TooHot", "Probe1: " + String(Probe1));
-  }
-  if (Probe1 < warnBelowProbe1 && Probe1 != -196.00  && (now() - lastTooColdAlert > NotifyEverySeconds))
-  {
-    sendData("TooCold", "Probe1: " + String(Probe1));
-  }
-  if (Probe2 > warnAboveTemp2  && (now() - lastTooHotAlert > NotifyEverySeconds) && Probe2 != 185)
-  {
-    sendData("TooHot", "Probe2: " + String(Probe2));
-  }
-  if (Probe2 < warnBelowTemp2 && Probe2  != -196.00  && (now() - lastTooColdAlert > NotifyEverySeconds))
-  {
-    sendData("TooCold", "Probe2: " + String(Probe2));
-  }
-
-  if (Probe1 > -195)
-  {
-    display.print("Probe1: "); display.print(Probe1); display.println(" Deg");
-    Serial.print("\t Probe1: "); Serial.print(Probe1);
-  }
-
-  if (Probe2 > -195)
-  {
-    display.print("Probe2: "); display.print(Probe2); display.println(" Deg");
-    Serial.print("\t Probe2: "); Serial.print(Probe2);
-  }
-
   if (tcTemp > 0)
   {
     display.print("Grill: "); display.print(tcTemp); display.println(" Deg");
@@ -210,7 +181,8 @@ void loop() {
     }
     sendData("Timer", String(keepDataPoint));
   }
-
+  Serial.println("");
+  
   //Nextion
   if (doUpdateNextion == true)
     nextionUpdate();
@@ -248,7 +220,7 @@ void loop() {
   {
     r1.setValue(true);
     relay1State=false;
-    Serial.println("Relay1 OnÂ");
+    Serial.println("Relay1 On");
   }
 
   if (digitalRead(relay2Pin)==true)

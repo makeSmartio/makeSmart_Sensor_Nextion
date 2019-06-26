@@ -46,9 +46,9 @@ time_t lastTooHotAlert = now() - 10000;
 time_t lastWaterAlert = now() - 10000;
 time_t lastSend = now() - 10000;
 time_t lastAlertTime = now() - 10000;
-time_t lastMotionAlert = now() - 1000;
-time_t lastSoilAlert = now() - 1000;
-time_t lastAirPolutionAlert = now() - 1000;
+time_t lastMotionAlert = now() - 10000;
+time_t lastSoilAlert = now() - 10000;
+time_t lastAirPolutionAlert = now() - 10000;
 
 time_t dryerRunningSince;
 int dryerSensitivity = 1000;
@@ -108,7 +108,7 @@ String webSite, javaScript, XML;
   int D2 = 2;
   int D4 = 4;
   #define ONE_WIRE_BUS_1 15
-  int drySoilValue = 3000;
+  int drySoilValue = 12000;
 
 #endif
 
@@ -178,23 +178,13 @@ String chipId;
 char apNameCharBuf[100];
 
 long vdd = 0;
-int16_t analogVal;
+int analogVal;
 bool bme280onBoard;
 String webPage;
 String line1;//, line2, line3, line4, line5;
 
-
-
-
 #include <Adafruit_ADS1015.h>
 Adafruit_ADS1115 ads;  // Declare an instance of the ADS1115
-
-float scalefactor = 0.1875F; // This is the scale factor for the default +/- 6.144 Volt Range we will use
-float R1 = 1000000.0; //30000  
-float R2 = 150000.0; //7500 
-//float vRef = 5;
-#define NUM_SAMPLES 50 // number of analog samples to take per reading
-
 
 //Nextion
 #include "Nextion.h"

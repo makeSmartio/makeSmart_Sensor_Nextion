@@ -201,7 +201,14 @@ void setup() {
   display.print("Connected to Wifi");
   display.display();
   Serial.println("Connected...");
-
+  
+  GetParamsFromWeb();
+  const char* dnsName = SensorName.c_str();
+  if (!MDNS.begin((dnsName))) {
+    Serial.println("Error setting up MDNS responder!");
+  }
+  MDNS.addService("http", "tcp", 80);
+  
   Serial.println("Local IP Address:");
   ipAddr =  String(WiFi.localIP()[0]) + "." + String(WiFi.localIP()[1]) + "." + String(WiFi.localIP()[2]) + "." + String(WiFi.localIP()[3]);
   //ipAddr = WiFi.localIP();
@@ -214,6 +221,11 @@ void setup() {
 
   ADC0readVoltage();
 
+  if (sensorMode == "Soil")
+    checkSoil();
+  else 
+    analogVal = analogRead(A0);
+  
   DS18B20_Sensor.begin();
   getDS18B20Temp();
 
@@ -253,13 +265,6 @@ void setup() {
 
   ads.setGain(GAIN_TWOTHIRDS);  // 2/3x gain +/- 6.144V  1 bit = 3mV      0.1875mV (default)
   ads.begin();
-
-  GetParamsFromWeb();
-  const char* dnsName = SensorName.c_str();
-  if (!MDNS.begin((dnsName))) {
-    Serial.println("Error setting up MDNS responder!");
-  }
-  MDNS.addService("http", "tcp", 80);
   
   Serial.println("getAccelGyroData");
   getAccelGyroData();
@@ -269,14 +274,10 @@ void setup() {
   Serial.println( WiFi.SSID() );
   Serial.println( WiFi.psk() );
   rssi = WiFi.RSSI();
-  
-  analogVal = analogRead(A0);
-  
+    
   sendData("Startup", resetReason);
 
-
-  // Simple Firmware Update Form
-  
+    // Simple Firmware Update Form
     httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(200, "text/html", "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>");
     });
@@ -359,7 +360,9 @@ void setup() {
       }      
     });
   
-    
+  httpServer.onNotFound([](AsyncWebServerRequest *request){
+  request->send(404);
+    });
   httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
         buildWebsite();
         Serial.println("buildWebsite");
