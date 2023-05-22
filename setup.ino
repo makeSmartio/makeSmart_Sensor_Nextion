@@ -1,5 +1,5 @@
 void setup() {
-  Serial.begin(115200);
+  //Serial.begin(115200);
   //Serial.setDebugOutput(true);
   Wire.begin();
   
@@ -70,7 +70,7 @@ void setup() {
   chipId = String(chip3);
   Serial.print("ESP32 ChipId: ");
   Serial.println(chipId);
-
+  
   pinMode(D4, OUTPUT);//ESP32 Dev Board uses D4 for 3.3V on the DS18B20 mini-pin jack
   digitalWrite(D4, HIGH);
   
@@ -78,6 +78,7 @@ void setup() {
   digitalWrite(19, LOW);
   
 #endif  
+  Serial.println(ThisRockVersion);  
 
   EEPROM.begin(64);
   delay(100);
@@ -86,10 +87,9 @@ void setup() {
   if (EEPROMData!="")
   {resetReason = EEPROMData;}
   writeEEPROM(10,""); //clear old data
-  Serial.print("EEPROM Data:");
+  Serial.print("EEPROM Data2:");
   Serial.println(resetReason);
   Serial.flush();
-  Serial.println(ThisRockVersion);  
 
     //Nextion
     nexInit();
@@ -103,9 +103,6 @@ void setup() {
     r3.attachPop(r3PopCallback, &r3);
     r4.attachPop(r4PopCallback, &r4);
 
-    //t0.setText("asdf");
-    
-    //t0.getText(buffer, sizeof(buffer));
     //Serial.print(buffer);
     
     pinMode(14, OUTPUT);

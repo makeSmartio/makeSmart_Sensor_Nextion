@@ -204,17 +204,17 @@ void loop() {
   strcpy(char_array, String(voltage).c_str());       
   t4.setText(char_array);
 
-  if (Probe1 > relay1OnTemp)
-    digitalWrite(relay1Pin, LOW);
-
-  if (Probe1 < relay1OffTemp)
-    digitalWrite(relay1Pin, HIGH);
+//  if (Probe1 > relay1OnTemp)
+//    digitalWrite(relay1Pin, LOW);
+//
+//  if (Probe1 < relay1OffTemp)
+//    digitalWrite(relay1Pin, HIGH);
     
   if (digitalRead(relay1Pin)==true)
   {
     r1.setValue(false);
     relay1State=true;
-    Serial.println("Relay1 Off");
+    //Serial.println("Relay1 Off");
   }
   else
   {

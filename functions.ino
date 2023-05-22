@@ -110,12 +110,12 @@ void relayToggle(int relayNumber)
 {
     if (digitalRead(relayNumber)==1)
     {
-      Serial.println("turning on");
+      Serial.println(relayNumber);
       digitalWrite(relayNumber, LOW);
     }
     else
     {
-      Serial.println("turning off");
+      Serial.println(relayNumber);
       digitalWrite(relayNumber, HIGH);
     }
 

@@ -5,7 +5,7 @@ bool doUpdateNextion = false;
 
 int NotifyEverySeconds = 0;
 int pirCount = 0;
-const int loopDelay = 0;
+const int loopDelay = 1000;
 const char* host = "makeSmart.io";
 const int httpPort = 80;
 String SensorName;
@@ -28,7 +28,7 @@ bool relay4State;
 int relay1OffTemp = 75;
 int relay1OnTemp = 78;
 
-const char* apPassword = "asdfasdf";
+const char* apPassword;// = "asdfasdf";
 long rssi;
 
 bool keepDataPoint = 0;
@@ -85,7 +85,7 @@ String webSite, javaScript, XML;
   #include <ESP8266HTTPUpdateServer.h>
   ESP8266WebServer httpServer(80);
   ESP8266HTTPUpdateServer httpUpdate;
-  #include <ESP8266httpUpdate.h>
+  #in1clude <ESP8266httpUpdate.h>
   #include <ESP8266mDNS.h>
   //#include <ESP8266HTTPClient.h>
   #define OLED_RESET   D4//  4 // Reset pin # (or -1 if sharing Arduino reset pin)
